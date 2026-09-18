@@ -1,0 +1,9 @@
+Verification — 2026-09-18
+PASS: TypeScript --noEmit.
+PASS: 32 isolated workflow checks using actual store/API code with in-memory SQLite.
+PASS: Initial Drizzle-generated schema applies to a clean SQLite database.
+PASS: PWA manifest icons and offline assets exist.
+BLOCKED: Vite preview / build: Node child-process creation fails with spawn EPERM.
+UNAVAILABLE: Browser visual/touch tests, hosted D1/R2 tests, installed PWA tests, WebMCP runtime validation.
+UNPUBLISHED: Existing private Site has no live version. No production data migrated.
+
