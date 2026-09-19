@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 
 export type PosUser = {
   userId: string;
+  username: string;
   displayName: string;
   email: string;
   fullName: string | null;
@@ -30,7 +31,7 @@ function fromBase64Url(value: string): Uint8Array {
   const base64 = value.replaceAll("-", "+").replaceAll("_", "/");
   const padded = base64 + "=".repeat((4 - (base64.length % 4)) % 4);
   const binary = atob(padded);
-  return Uint8Array.from(binary, (char) => char.charCodeAt(0));
+  return Uint8Array.from(binary, char => char.charCodeAt(0));
 }
 
 async function key() {
@@ -89,6 +90,7 @@ export async function getPosUser(): Promise<PosUser | null> {
 
     if (
       typeof payload.userId !== "string" ||
+      
       typeof payload.email !== "string" ||
       typeof payload.displayName !== "string" ||
       typeof payload.exp !== "number" ||
@@ -99,6 +101,7 @@ export async function getPosUser(): Promise<PosUser | null> {
 
     return {
       userId: payload.userId,
+      username: typeof payload.username === "string" ? payload.username : "",
       email: payload.email,
       displayName: payload.displayName,
       fullName:
@@ -112,3 +115,4 @@ export async function getPosUser(): Promise<PosUser | null> {
 export async function clearPosSession(): Promise<void> {
   (await cookies()).delete(COOKIE_NAME);
 }
+

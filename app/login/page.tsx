@@ -37,17 +37,17 @@ export default async function LoginPage({
 
         {params.error ? (
           <p style={{ color: "#b42318" }}>
-            Invalid email or password.
+            Invalid username or password.
           </p>
         ) : null}
 
         <input type="hidden" name="return_to" value={returnTo} />
 
         <label>
-          Email
+          Username
           <input
-            name="email"
-            type="email"
+            name="username"
+            type="text"
             required
             autoComplete="username"
             style={{
@@ -92,3 +92,5 @@ export default async function LoginPage({
     </main>
   );
 }
+
+

@@ -1,6 +1,8 @@
 import { env } from "cloudflare:workers";
 import { NextResponse } from "next/server";
 import { createPosSession } from "@/app/pos-auth";
+import { verifyPassword } from "@/app/password";
+import { q } from "@/lib/store";
 
 function safeReturnTo(value: string): string {
   if (!value.startsWith("/") || value.startsWith("//")) return "/";
@@ -26,11 +28,42 @@ async function samePassword(a: string, b: string): Promise<boolean> {
 }
 
 export async function POST(request: Request) {
+  const origin = request.headers.get("origin");
+  if (origin && origin !== new URL(request.url).origin) {
+    return new NextResponse("Invalid request.", { status: 403 });
+  }
+
   const form = await request.formData();
-  const email = String(form.get("email") ?? "").trim().toLowerCase();
+  const username = String(
+    form.get("username") ?? form.get("email") ?? "",
+  ).trim().toLowerCase();
   const password = String(form.get("password") ?? "");
   const returnTo = safeReturnTo(String(form.get("return_to") ?? "/"));
 
+  const member = await q(
+    "SELECT email,user_id,username,name,role,active,password_hash FROM members WHERE username=? COLLATE NOCASE LIMIT 1",
+    username,
+  ).first<any>();
+
+  if (
+    member?.active &&
+    member.user_id &&
+    member.password_hash &&
+    (await verifyPassword(password, member.password_hash))
+  ) {
+    await createPosSession({
+      userId: member.user_id,
+      username: member.username,
+      email: member.email,
+      displayName: member.name,
+      fullName: member.name,
+    });
+
+    return NextResponse.redirect(new URL(returnTo, request.url), 303);
+  }
+
+  // Temporary fallback for the existing Admin account.
+  // Remove after the new Admin username/password has been tested.
   const runtime = env as typeof env & {
     POS_ADMIN_EMAIL?: string;
     POS_ADMIN_PASSWORD?: string;
@@ -39,24 +72,29 @@ export async function POST(request: Request) {
   const expectedEmail = runtime.POS_ADMIN_EMAIL?.trim().toLowerCase();
   const expectedPassword = runtime.POS_ADMIN_PASSWORD;
 
-  const passwordOk =
+  const legacyPasswordOk =
     expectedPassword && password
       ? await samePassword(password, expectedPassword)
       : false;
 
-  if (!expectedEmail || !passwordOk || email !== expectedEmail) {
-    const url = new URL("/login", request.url);
-    url.searchParams.set("error", "1");
-    url.searchParams.set("return_to", returnTo);
-    return NextResponse.redirect(url, 303);
+  if (
+    expectedEmail &&
+    username === expectedEmail &&
+    legacyPasswordOk
+  ) {
+    await createPosSession({
+      userId: "pos_admin",
+      username: "",
+      email: expectedEmail,
+      displayName: "Miguelitos Admin",
+      fullName: "Miguelitos Admin",
+    });
+
+    return NextResponse.redirect(new URL(returnTo, request.url), 303);
   }
 
-  await createPosSession({
-    userId: "pos_admin",
-    email: expectedEmail,
-    displayName: "Miguelitos Admin",
-    fullName: "Miguelitos Admin",
-  });
-
-  return NextResponse.redirect(new URL(returnTo, request.url), 303);
+  const url = new URL("/login", request.url);
+  url.searchParams.set("error", "1");
+  url.searchParams.set("return_to", returnTo);
+  return NextResponse.redirect(url, 303);
 }
