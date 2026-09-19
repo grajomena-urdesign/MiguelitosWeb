@@ -43,7 +43,7 @@ export default function Pos({displayName}:{displayName:string}){
  const openProduct=(p:Product)=>{setEditor({...p});setPicture(null)};
  const showReceipt=(id:string)=>run(async()=>setReceipt((await api({action:'receipt',id})).sale));
  const navigation=isAdmin?['New sale','Dashboard','Products','Inventory','Reports','Users','Settings']:['New sale'];
- return <div className="pos-app"><header className="brand"><img src="/logo.png" width="58" height="58" alt="Miguelitos Ice Cream"/><div><strong>MIGUELITOS</strong><small>ICE CREAM · POS</small></div><div className="account"><span>{data?.user.name||displayName}</span><small>{data?.user.role||'Signing in'}</small><a href="/signout-with-chatgpt?return_to=/" target="_top">Sign out</a></div></header>
+ return <div className="pos-app"><header className="brand"><img src="/logo.png" width="58" height="58" alt="Miguelitos Ice Cream"/><div><strong>MIGUELITOS</strong><small>ICE CREAM · POS</small></div><div className="account"><span>{data?.user.name||displayName}</span><small>{data?.user.role||'Signing in'}</small><a href="/api/auth/logout" target="_top">Sign out</a></div></header>
  <div className="topline"><span className={online?'connection':'offline'}>{online?'● Online':'● Offline — connect to save sales'}</span><time>{time} · Manila</time><Button variant="outline" size="sm" onClick={()=>install?install.prompt():setInstallHelp(true)}><Download size={16}/> Install</Button><Button aria-label="Refresh products" variant="ghost" disabled={busy} onClick={()=>run(async()=>{await refresh();setNotice('Products refreshed.')})}><RefreshCw size={18}/></Button></div>
  <Tabs value={view} onValueChange={v=>{setView(v);setSearch('');setCategory('All');setError('');setNotice('')}} className="main-tabs"><TabsList>{navigation.map(n=><TabsTrigger key={n} value={n}>{n}</TabsTrigger>)}</TabsList></Tabs>
  {error&&<div role="alert" className="message error">{error}{!data&&<Button onClick={()=>run(async()=>{await refresh()})}>Retry</Button>}</div>}{notice&&<div role="status" className="message success">{notice}</div>}
@@ -72,5 +72,6 @@ export default function Pos({displayName}:{displayName:string}){
  <AlertDialog open={cancelOrder} onOpenChange={setCancelOrder}><AlertDialogContent><AlertDialogTitle>Cancel this unsaved order?</AlertDialogTitle><AlertDialogDescription>The items and discount details will be cleared.</AlertDialogDescription><AlertDialogFooter><AlertDialogCancel>Keep order</AlertDialogCancel><AlertDialogAction onClick={clear}>Cancel order</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
  </div>;
 }
+
 
 

@@ -39,7 +39,7 @@ export async function hashPassword(password: string) {
     throw new Error("Password must be 8 to 128 characters.");
   }
 
-  const iterations = 210000;
+  const iterations = 100000;
   const salt = crypto.getRandomValues(new Uint8Array(16));
   const hash = await derive(password, salt, iterations);
 
@@ -69,3 +69,4 @@ export async function verifyPassword(password: string, stored: string) {
     return false;
   }
 }
+

@@ -27,7 +27,7 @@ export async function POST(request:NextRequest){try{
   const username=str(b.username,32).toLowerCase(),name=str(b.name),role=str(b.role),password=typeof b.password==='string'?b.password:'',active=b.active?1:0;
   if(!/^[a-z0-9][a-z0-9._-]{2,31}$/.test(username))throw Error('Username must be 3 to 32 characters using letters, numbers, dot, dash or underscore.');
   if(!name||!['Admin','Cashier'].includes(role))throw Error('Enter a name and valid role.');
-  const duplicate=await q('SELECT user_id FROM members WHERE username=? COLLATE NOCASE AND (user_id IS NULL OR user_id<>?)',username,str(b.user_id)).first<any>();
+  const duplicate=await q('SELECT user_id FROM members WHERE username=? COLLATE NOCASE AND (user_id IS NULL OR user_id<>?)',username,typeof b.user_id==='string'?b.user_id:'').first<any>();
   if(duplicate)throw Error('That username is already in use.');
   if(b.user_id){
    const id=str(b.user_id);
@@ -46,6 +46,7 @@ export async function POST(request:NextRequest){try{
  if(b.action==='settings'){const s=b.settings,name=str(s.name);if(!name)throw Error('Store name is required.');await q('UPDATE settings SET name=?,address=?,contact=?,tax=?,footer=? WHERE id=1',name,str(s.address,500),str(s.contact),num(s.tax,0,10000),str(s.footer,500)).run();return NextResponse.json({ok:true})}
  throw Error('Unknown action.');
 }catch(e){console.error('POS request failed',e);const msg=(e as Error).message;return NextResponse.json({error:/UNIQUE/.test(msg)?'That SKU or record already exists.':/CHECK|constraint/.test(msg)?'The record changed or stock is insufficient. Refresh and try again.':msg},{status:(e as any).status===503?503:400})}}
+
 
 
 
