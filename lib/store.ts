@@ -1,13 +1,13 @@
 import {env} from 'cloudflare:workers';
-import {getChatGPTUser} from '@/app/chatgpt-auth';
+import {getPosUser} from '@/app/pos-auth';
 export function db(){if(!env.DB)throw validation('Database is unavailable. Please try again.');return env.DB}
 export function bucket(){if(!env.BUCKET)throw validation('Picture storage is unavailable.');return env.BUCKET}
 export const q=(sql:string,...args:any[])=>db().prepare(sql).bind(...args);
 export async function actor(){
- const user=await getChatGPTUser();if(!user)throw validation('Sign in to continue.');
+ const user=await getPosUser();if(!user)throw validation('Sign in to continue.');
  const email=user.email.toLowerCase();
  // Bootstrap only the verified Site owner, never an arbitrary first visitor.
- if(user.userId==='a06ff181-f091-487c-9e30-6885122c0760'||email==='grajomena@gmail.com'||(user.userId==='local_seedy'&&email==='seedy@sites.test')){
+ if(user.userId==='pos_admin'){
   await q("INSERT INTO members(email,user_id,name,role,active) SELECT ?,?,?,'Admin',1 WHERE NOT EXISTS(SELECT 1 FROM members)",email,user.userId,user.displayName).run();
  }
  let member=await q('SELECT * FROM members WHERE user_id=?',user.userId).first<any>();
@@ -50,6 +50,8 @@ async function checkoutInner(user:any,b:any){
  try{await db().batch(statements)}catch(error){let retry:any;try{retry=await q('SELECT * FROM sales WHERE id=?',id).first<any>()}catch{throw Object.assign(Error('Sale status is uncertain. Retry this same order.'),{status:503})}if(retry?.request_hash===hash&&retry.cashier_email===user.email)return retry;if(!/CHECK|constraint|UNIQUE/i.test(String(error)))throw Object.assign(new Error('Sale status is uncertain. Retry this same order.'),{status:503});throw validation('Stock or settings changed, or the sale could not be saved. Refresh and try again. Nothing was charged by this app.')}
  try{return await q('SELECT * FROM sales WHERE id=?',id).first()}catch{throw Object.assign(Error('Sale status is uncertain. Retry this same order to recover its receipt.'),{status:503})}
 }
+
+
 
 
 
