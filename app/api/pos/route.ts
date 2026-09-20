@@ -43,7 +43,7 @@ export async function POST(request:NextRequest){try{
   }
   return NextResponse.json({ok:true});
  }
- if(b.action==='settings'){const s=b.settings,name=str(s.name);if(!name)throw Error('Store name is required.');await q('UPDATE settings SET name=?,address=?,contact=?,tax=?,footer=? WHERE id=1',name,str(s.address,500),str(s.contact),num(s.tax,0,10000),str(s.footer,500)).run();return NextResponse.json({ok:true})}
+ if(b.action==='settings'){const s=b.settings,name=str(s.name);if(!name)throw Error('Store name is required.');await q('UPDATE settings SET name=?,address=?,contact=?,tax=?,footer=?,tin=? WHERE id=1',name,str(s.address,500),str(s.contact),num(s.tax,0,10000),str(s.footer,500),str(s.tin,50)).run();return NextResponse.json({ok:true})}
  throw Error('Unknown action.');
 }catch(e){console.error('POS request failed',e);const msg=(e as Error).message;return NextResponse.json({error:/UNIQUE/.test(msg)?'That SKU or record already exists.':/CHECK|constraint/.test(msg)?'The record changed or stock is insufficient. Refresh and try again.':msg},{status:(e as any).status===503?503:400})}}
 
