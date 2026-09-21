@@ -8,7 +8,7 @@ const outputPath = join(clientDir, "sw.js");
 const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
 
 const assets = new Set([
-  "/offline.html",
+  "/offline",
   "/manifest.webmanifest",
   "/favicon.svg",
   "/icon-192.png",
@@ -84,8 +84,16 @@ self.addEventListener("fetch", event => {
   ) {
     return;
   }
-
-  if (url.pathname.startsWith("/_next/static/")) {
+if (request.mode === "navigate") {
+  event.respondWith(
+    fetch(request).catch(() => caches.match("/offline"))
+  );
+  return;
+}
+  if (
+  url.pathname.startsWith("/_next/static/") ||
+  ASSETS.includes(url.pathname)
+) {
     event.respondWith(
       caches.match(request).then(cached => cached || fetch(request))
     );

@@ -1,6 +1,11 @@
 ﻿'use client';
 import {useEffect,useRef,useState} from 'react';
 import {queueOfflineSale,getOfflineSales,removeOfflineSale} from './offline-sales';
+import {
+  clearOfflineState,
+  getOfflineState,
+  saveOfflineState,
+} from "./offline-state";
 import {Button} from '@/components/ui/button';
 import {Tabs,TabsList,TabsTrigger} from '@/components/ui/tabs';
 import {Dialog,DialogContent,DialogHeader,DialogTitle,DialogDescription} from '@/components/ui/dialog';
@@ -29,7 +34,22 @@ export default function Pos({displayName}:{displayName:string}){
  const [members,setMembers]=useState<any[]>([]),[member,setMember]=useState<any>(null),[settings,setSettings]=useState<any>(null),[install,setInstall]=useState<any>(null),[installHelp,setInstallHelp]=useState(false),[uncertain,setUncertain]=useState(false),[offlineCount,setOfflineCount]=useState(0);
  const orderId=useRef(''),pending=useRef<any>(null),saving=useRef(false),draftKey=useRef(''),currentUserId=useRef('');
  const isAdmin=data?.user.role==='Admin',products:Product[]=data?.products||[];
- const refresh=async()=>{const d=await api();setData(d);return d;};
+ const refresh=async()=>{
+  try{
+    const d=await api();
+    setData(d);
+    saveOfflineState(d).catch(() => {});
+    return d;
+  }catch(e){
+    if(navigator.onLine) throw e;
+
+    const saved=await getOfflineState();
+    if(!saved) throw new Error('No offline POS data is saved on this device yet.');
+
+    setData(saved);
+    return saved;
+  }
+};
  const refreshOfflineCount=async(userId:string)=>setOfflineCount((await getOfflineSales(userId)).length);
  const syncOfflineSales=async(userId:string)=>{const rows=await getOfflineSales(userId);for(const row of rows){try{await api(row.body);await removeOfflineSale(row.id)}catch{break}}await refreshOfflineCount(userId);};
  const run=async(fn:()=>Promise<void>)=>{if(saving.current)return;saving.current=true;setBusy(true);setError('');setNotice('');try{await fn()}catch(e){setError((e as Error).message)}finally{saving.current=false;setBusy(false)}};
@@ -45,12 +65,24 @@ export default function Pos({displayName}:{displayName:string}){
  const saveProduct=()=>run(async()=>{if(!editor)return;const result=await api({action:'product',product:editor});if(picture){try{const uploaded=await fetch('/api/picture?id='+encodeURIComponent(result.id),{method:'POST',headers:{'Content-Type':picture.type},body:picture});const info:any=await uploaded.json();if(!uploaded.ok)throw Error(info.error)}catch(e){const d=await refresh();setEditor(d.products.find((p:Product)=>p.id===result.id));throw Error('Product saved, but picture was not uploaded. '+(e as Error).message)}}setEditor(null);setPicture(null);await refresh();setNotice('Product saved.');});
  const openProduct=(p:Product)=>{setEditor({...p});setPicture(null)};
  const showReceipt=(id:string)=>run(async()=>setReceipt((await api({action:'receipt',id})).sale));
- const navigation=isAdmin?['New sale','Dashboard','Products','Inventory','Reports','Users','Settings']:['New sale'];
+ const navigation = !online
+  ? ['New sale']
+  : isAdmin
+    ? ['New sale', 'Dashboard', 'Products', 'Inventory', 'Reports', 'Users', 'Settings']
+    : ['New sale'];
  return <div className="pos-app"><header className="brand"><img src="/logo.png" width="58" height="58" alt="Miguelitos Ice Cream"/><div style={{textAlign:'center'}}>
   <strong>MIGUELITOS</strong>
   <small>ICE CREAM - POS</small>
   {data?.settings?.tin&&<small>TIN: {data.settings.tin}</small>}
-</div><div className="account"><span>{data?.user.name||displayName}</span><small>{data?.user.role||'Signing in'}</small><a href="/api/auth/logout" target="_top">Sign out</a></div></header>
+</div><div className="account"><span>{data?.user.name||displayName}</span><small>{data?.user.role||'Signing in'}</small><a
+  href="/api/auth/logout"
+  target="_top"
+  onClick={() => {
+    clearOfflineState().catch(() => {});
+  }}
+>
+  Sign out
+</a></div></header>
  <div className="topline"><span className={online?'connection':'offline'}>{online?'Online':'Offline - sales will sync later'}{offlineCount>0?` - ${offlineCount} pending`:''}</span><time>{time} - Manila</time><Button variant="outline" size="sm" onClick={()=>install?install.prompt():setInstallHelp(true)}><Download size={16}/> Install</Button><Button aria-label="Refresh products" variant="ghost" disabled={busy} onClick={()=>run(async()=>{await refresh();setNotice('Products refreshed.')})}><RefreshCw size={18}/></Button></div>
  <Tabs value={view} onValueChange={v=>{setView(v);setSearch('');setCategory('All');setError('');setNotice('')}} className="main-tabs"><TabsList>{navigation.map(n=><TabsTrigger key={n} value={n}>{n}</TabsTrigger>)}</TabsList></Tabs>
  {error&&<div role="alert" className="message error">{error}{!data&&<Button onClick={()=>run(async()=>{await refresh()})}>Retry</Button>}</div>}{notice&&<div role="status" className="message success">{notice}</div>}

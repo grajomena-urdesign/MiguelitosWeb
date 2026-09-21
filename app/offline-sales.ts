@@ -1,6 +1,6 @@
 const DB_NAME = "miguelitos-pos";
 const STORE_NAME = "offline-sales";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 export type OfflineSale = {
   id: string;
@@ -14,11 +14,16 @@ function openDb(): Promise<IDBDatabase> {
     const request = indexedDB.open(DB_NAME, DB_VERSION);
 
     request.onupgradeneeded = () => {
-      const db = request.result;
-      if (!db.objectStoreNames.contains(STORE_NAME)) {
-        db.createObjectStore(STORE_NAME, { keyPath: "id" });
-      }
-    };
+  const db = request.result;
+
+  if (!db.objectStoreNames.contains("offline-sales")) {
+    db.createObjectStore("offline-sales", { keyPath: "id" });
+  }
+
+  if (!db.objectStoreNames.contains("offline-state")) {
+    db.createObjectStore("offline-state");
+  }
+};
 
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error);
